@@ -1,0 +1,35 @@
+#Matthew Lyons and Avinash Sookram
+#Python CBF implementation
+#IST 402 Spring 2023
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import binascii
+import os
+
+def encrypt_data(data, key, iv):
+    cipher = AES.new(key, AES.MODE_CFB, iv)
+    encryptedText = cipher.encrypt(pad(data, AES.block_size))
+    return encryptedText
+
+def decrypt_data(encryptedText, key, iv):
+    cipher = AES.new(key, AES.MODE_CFB, iv)
+    message = unpad(cipher.decrypt(encryptedText), AES.block_size)
+    return message
+
+key = os.urandom(32)
+iv = b"0000000000000000"
+input = input("Enter Message: ")
+message = bytes(input, 'utf-8')
+print("Message:", str(message)[2:-1])
+
+encryptedText = encrypt_data(message, key, iv)
+print("Encrypted Cipher Text:", str(binascii.hexlify(encryptedText))[2:-1])
+
+decrypted_plaintext = decrypt_data(encryptedText, key, iv)
+print("Decrypted message:", str(decrypted_plaintext)[2:-1])
+
+#References https://www.educative.io/answers/what-is-cfb
+#https://pypi.org/project/pycrypto/
+#https://docs.python.org/3/library/binascii.html
+#https://pycryptodome.readthedocs.io/en/latest/src/cipher/aes.html
