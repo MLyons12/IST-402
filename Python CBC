@@ -1,0 +1,34 @@
+#Matthew Lyons and Avinash Sookram
+#CBC Python Implementation
+#IST 402 Spring 2023
+
+codebook = [[0b00, 0b01], [0b01, 0b10], [0b10, 0b11], [0b11, 0b00]]
+message_str = input("Enter binary message ")
+iv = 10
+
+def string_to_binary(s):
+    binary = ""
+    for char in s:
+        binary += format(ord(char), '08b')
+    return binary
+
+message = [int(bit) for bit in string_to_binary(message_str)]
+
+def codebook_lookup(xor):
+    for row in codebook:
+        if row[0] == xor:
+            return row[1]
+    return 0
+
+x, lookup_value = 0, 0
+for i in range(len(message)):
+    if x == 0:
+        xor = message[x] ^ iv
+    else:
+        xor = message[x] ^ lookup_value
+    lookup_value = codebook_lookup(xor)
+    x += 1
+    print(f"Cipher Value of {message[i]} is {bin(lookup_value)}")
+
+# Reference https://www.youtube.com/watch?v=oVCCXZfpu-w&ab_channel=AleksanderEssex
+# https://www.youtube.com/watch?v=soatRmpccPk&ab_channel=CISSPrep
