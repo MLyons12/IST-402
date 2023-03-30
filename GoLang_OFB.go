@@ -1,78 +1,79 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
 	"fmt"
 )
 
-// Ramdom bytes for encryption and decryption
-var bytes = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
+/* 2 arrays with 4 rows and 2 columns, to act as 2 pages of codebooks*/
+var codebook1 = [4][2]int{{0b0000, 0b100000}, {0b0001, 0b110000}, {0b0010, 0b110011}, {0b0011, 0b111111}}
+var codebook2 = [4][2]int{{0b0100, 0b101010}, {0b0101, 0b111110}, {0b0110, 0b100111}, {0b0111, 0b101011}}
+var message = [4]int{0b0000, 0b0100, 0b0011, 0b0111} //4 row msg
+var iv int = 0b10 //initialization vector
+var encrypted_message []int // encrypted message array
+var decrypted_message []int // decrypted message array
 
-// This should be in an env file in production
-const MySecret string = "abc&1*~#^2^#s0^=)^^7%b34"
-
-//How to encode with Base64 for Binary 
-func Encode(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
+func codebookLookup(xor int)(lookupValue int) { //to lookup encrypted message
+	var i, j int = 0, 0 //to get in the indices 
+	for i = 0; i < 4; i++ {
+	if codebook1[i][j] == xor{ //check first elem of first page in codebook intially
+      		j++ //access encrypted value
+		lookupValue = codebook1[i][j]
+	} else if codebook2[i][j] == xor{ //then checks codebook 2
+      		j++
+		lookupValue = codebook2[i][j]
+      		break
+      		}
+	}
+	return lookupValue
 }
 
-// Base64 decoding
-func Decode(s string) []byte {
-	data, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
+func reverseCodebookLookup(xor int)(lookupValue int) { //to lookup decrypted message
+	var i, j int = 0, 1 //to get in the indices 
+	for i = 0; i < 4; i++ {
+	if codebook1[i][j] == xor{
+      		j--
+		lookupValue = codebook1[i][j]
+	} else if codebook2[i][j] == xor{ //codebook2 check
+      		j--
+		lookupValue = codebook2[i][j]
+      		break
+      		}
 	}
-	return data
-}
-
-// Encrypt method is to encrypt or hide any classified text
-func Encrypt(text, MySecret string) (string, error) {
-	//Create the AES block
-	block, err := aes.NewCipher([]byte(MySecret))
-	if err != nil {
-		return "", err
-	}
-	//plaintext must be a byte format
-	plainText := []byte(text)
-	ofb := cipher.NewOFB(block, bytes) //NewOFB is the cipher built-in instance for output feedback mode
-	cipherText := make([]byte, len(plainText))
-	ofb.XORKeyStream(cipherText, plainText)
-	return Encode(cipherText), nil
-}
-
-// Decrypt method is to extract back the encrypted text
-func Decrypt(text, MySecret string) (string, error) {
-	block, err := aes.NewCipher([]byte(MySecret))
-	if err != nil {
-		return "", err
-	}
-	cipherText := Decode(text)
-	ofb := cipher.NewOFB(block, bytes) //NewOFB acts as both encryption and decryption based off the documentation
-	plainText := make([]byte, len(cipherText))
-	ofb.XORKeyStream(plainText, cipherText)
-	return string(plainText), nil
+	return lookupValue
 }
 
 func main() {
-	fmt.Println("Enter the string to encrypt: ")
-	var StringToEncrypt string
-	fmt.Scanln(&StringToEncrypt)
-	// To encrypt the StringToEncrypt
-	encText, err := Encrypt(StringToEncrypt, MySecret)
-	if err != nil {
-		fmt.Println("error encrypting your classified text: ", err)
-	}
-	fmt.Println(encText)
-	decText, err := Decrypt(encText, MySecret)
-	if err != nil {
-		fmt.Println("error decrypting your encrypted text: ", err)
-	}
-	fmt.Println(decText)
-}
+	var xor int = 0
+ 	var x, i int = 0, 0 //int vars to loop through codelookup
+ 	var y, z int = 0, 0 //int vars to loop through reverseCodeLookup
+	var lookupValue int = 0 //used for intial lookup
 
-//Credits to the original source code posted in Canvas
-//Following are references:
-//https://pkg.go.dev/crypto/cipher#example-NewOFB - documentation
-//https://go.dev/src/crypto/cipher/ofb.go - NewOFB's implemetnation via the in-depth documentation
+  	fmt.Println(message) //print original message
+  
+  	for i = 0; i < 4; i++ {
+  		if x == 0{
+        		lookupValue = message[x] ^ iv
+      		} else{
+        		xor = message[x] ^ lookupValue
+      		}
+      		lookupValue = codebookLookup(xor)
+      		encrypted_message = append(encrypted_message, lookupValue)
+		x++
+		fmt.Printf("The ciphered value of a is %b\n", lookupValue)
+	}
+  
+  	fmt.Println(encrypted_message) //print encrypted message
+  
+  	for z = 0; z < 4; z++{
+    		if z == 3{
+      			xor = encrypted_message[y] ^ iv
+    		} else{
+      			xor = encrypted_message[y] ^ lookupValue
+    		}
+    		lookupValue = reverseCodebookLookup(xor)
+    		decrypted_message = append(decrypted_message, lookupValue)
+	  	y++
+	  	fmt.Printf("The deciphered value of a is %b\n", lookupValue)
+  	}
+  	fmt.Println(decrypted_message) //print decrypted message
+}
