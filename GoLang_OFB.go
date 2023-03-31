@@ -5,75 +5,82 @@ import (
 )
 
 /* 2 arrays with 4 rows and 2 columns, to act as 2 pages of codebooks*/
-var codebook1 = [4][2]int{{0b0000, 0b100000}, {0b0001, 0b110000}, {0b0010, 0b110011}, {0b0011, 0b111111}}
-var codebook2 = [4][2]int{{0b0100, 0b101010}, {0b0101, 0b111110}, {0b0110, 0b100111}, {0b0111, 0b101011}}
-var message = [4]int{0b0000, 0b0100, 0b0011, 0b0111} //4 row msg
+var codebook1 = [4][2]int{{0b00, 0b01}, {0b01, 0b11}, {0b10, 0b00}, {0b11, 0b10}}
+var message = [4]int{0b00, 0b10, 0b01, 0b11} //4 row msg
 var iv int = 0b10 //initialization vector
+var key int = 0b11 //key for keystream, usually is random but hardcoded for testing sake
 var encrypted_message []int // encrypted message array
 var decrypted_message []int // decrypted message array
+var finalDecrypt []int
 
 func codebookLookup(xor int)(lookupValue int) { //to lookup encrypted message
 	var i, j int = 0, 0 //to get in the indices 
 	for i = 0; i < 4; i++ {
-	if codebook1[i][j] == xor{ //check first elem of first page in codebook intially
-      		j++ //access encrypted value
-		lookupValue = codebook1[i][j]
-	} else if codebook2[i][j] == xor{ //then checks codebook 2
-      		j++
-		lookupValue = codebook2[i][j]
-      		break
-      		}
-	}
+		if codebook1[i][j] == xor{ 
+			j++ //access encrypted value
+			lookupValue = codebook1[i][j]
+			j = 0 //reset access variable
+		} 
+  	}
 	return lookupValue
 }
 
 func reverseCodebookLookup(xor int)(lookupValue int) { //to lookup decrypted message
 	var i, j int = 0, 1 //to get in the indices 
 	for i = 0; i < 4; i++ {
-	if codebook1[i][j] == xor{
-      		j--
-		lookupValue = codebook1[i][j]
-	} else if codebook2[i][j] == xor{ //codebook2 check
-      		j--
-		lookupValue = codebook2[i][j]
-      		break
-      		}
+		if codebook1[i][j] == xor{
+			j--
+			lookupValue = codebook1[i][j]
+			j = 1
+			break
+		}
 	}
 	return lookupValue
 }
 
-func main() {
-	var xor int = 0
- 	var x, i int = 0, 0 //int vars to loop through codelookup
- 	var y, z int = 0, 0 //int vars to loop through reverseCodeLookup
-	var lookupValue int = 0 //used for intial lookup
+func reverseArray(arr []int) []int{
+	for i, j := 0, len(arr)-1; i<j; i, j = i+1, j-1 {
+		arr[i], arr[j] = arr[j], arr[i]
+		}
+	return arr
+}
 
-  	fmt.Println(message) //print original message
+func main() {
+var xor int = 0
+var keystream int = 0
+var x, i int = 0, 0 //int vars to loop through codelookup
+var y, z int = 0, 0 //int vars to loop through reverseCodeLookup
+var lookupValue int = 0 //used for intial lookup
+
+fmt.Println(message) //print original message
   
-  	for i = 0; i < 4; i++ {
-  		if x == 0{
-        		lookupValue = message[x] ^ iv
-      		} else{
-        		xor = message[x] ^ lookupValue
-      		}
-      		lookupValue = codebookLookup(xor)
-      		encrypted_message = append(encrypted_message, lookupValue)
-		x++
-		fmt.Printf("The ciphered value of a is %b\n", lookupValue)
+for i = 0; i < 4; i++ {
+	if x == 0{
+		keystream = iv ^ key //create keystream
+		xor = message[x] ^ keystream //use keystream to XOR plaintext to create ciphertext
+	} else{
+		xor = message[x] ^ keystream
+	}
+	lookupValue = codebookLookup(xor)
+	encrypted_message = append(encrypted_message, lookupValue)
+	x++
+	fmt.Printf("The ciphered value of a is %b\n", lookupValue)
 	}
   
-  	fmt.Println(encrypted_message) //print encrypted message
+fmt.Println(encrypted_message) //print encrypted message
   
-  	for z = 0; z < 4; z++{
-    		if z == 3{
-      			xor = encrypted_message[y] ^ iv
-    		} else{
-      			xor = encrypted_message[y] ^ lookupValue
-    		}
-    		lookupValue = reverseCodebookLookup(xor)
-    		decrypted_message = append(decrypted_message, lookupValue)
-	  	y++
-	  	fmt.Printf("The deciphered value of a is %b\n", lookupValue)
-  	}
-  	fmt.Println(decrypted_message) //print decrypted message
+for z = 0; z < 4; z++{
+	if z == 0{
+		keystream = iv ^ key //create keystream
+		xor = encrypted_message[y] ^ keystream //use keystream to XOR ciphertext to create plaintext
+	} else{
+		xor = encrypted_message[y] ^ keystream
+	}
+	lookupValue = reverseCodebookLookup(xor)
+	decrypted_message = append(decrypted_message, lookupValue)
+	y++
+	fmt.Printf("The deciphered value of a is %b\n", lookupValue)
+}
+finalDecrypt = reverseArray(decrypted_message)
+fmt.Println(finalDecrypt) //print decrypted message
 }
